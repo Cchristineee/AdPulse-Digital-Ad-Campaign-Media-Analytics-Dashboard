@@ -41,14 +41,14 @@ The system simulates high-volume ad serving events (impressions, quartile video 
 ---
 
 ## Core Business Metrics Calculated 📊
-
+ 
 * **Hook Rate (%):** Measures immediate creative capture (25% quartile video plays divided by impressions).
-
-  $$\text{Hook Rate} = \left( \frac{\text{q1\_25 Plays}}{\text{Impressions}} \right) \times 100$$
-
+  $$\text{Hook Rate} = \left( \frac{\text{q1\\_25 Plays}}{\text{Impressions}} \right) \times 100$$
+  <br>
+  <br>
 * **Video Completion Rate (VTR %):** Measures total ad retention (100% video completions divided by impressions).
+  $$\text{VTR} = \left( \frac{\text{q4\\_100 Completions}}{\text{Impressions}} \right) \times 100$$
 
-  $$\text{VTR} = \left( \frac{\text{q4\_100 Completions}}{\text{Impressions}} \right) \times 100$$
 
 ---
 
