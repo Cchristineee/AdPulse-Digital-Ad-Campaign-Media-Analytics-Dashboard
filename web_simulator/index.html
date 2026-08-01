@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdPulse - VAST Tag & Telemetry Simulator</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent-blue: #38bdf8;
+            --text-color: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #22c55e;
+            --warning: #f59e0b;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+        }
+
+        header {
+            margin-bottom: 2rem;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 1rem;
+        }
+
+        h1 {
+            margin: 0 0 0.5rem 0;
+            color: var(--accent-blue);
+        }
+
+        p {
+            color: var(--text-muted);
+            margin: 0;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        select, button {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 6px;
+            border: 1px solid #475569;
+            background-color: #0f172a;
+            color: var(--text-color);
+            font-size: 1rem;
+        }
+
+        button {
+            background-color: #0284c7;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 0.5rem;
+        }
+
+        button:hover {
+            background-color: #0369a1;
+        }
+
+        .video-box {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            background: #000;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        .progress-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 6px;
+            background-color: var(--accent-blue);
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        .telemetry-log {
+            background-color: #090d16;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 1rem;
+            height: 220px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+
+        .log-entry {
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid #1e293b;
+            padding-bottom: 0.25rem;
+        }
+
+        .tag-event {
+            color: var(--accent-blue);
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>AdPulse VAST Tag Simulator</h1>
+        <p>Simulates real-time ad player execution and VAST tracking telemetry ping dispatching.</p>
+    </header>
+
+    <div class="grid">
+        <!-- Control Panel -->
+        <div class="card">
+            <h3>Campaign Controls</h3>
+            
+            <div class="form-group">
+                <label for="campaignSelect">Select Campaign</label>
+                <select id="campaignSelect">
+                    <option value="CMP_101" data-format="OLV">CMP_101 - Summer Apparel (OLV)</option>
+                    <option value="CMP_102" data-format="CTV">CMP_102 - Tech Gadgets Launch (CTV)</option>
+                    <option value="CMP_103" data-format="Display">CMP_103 - B2B SaaS Trial (Display)</option>
+                </select>
+            </div>
+
+            <div class="video-box">
+                <span id="playerStatus" style="color: #64748b;">Ready to simulate ad playback</span>
+                <div id="progressBar" class="progress-bar"></div>
+            </div>
+
+            <button id="playAdBtn">Simulate Ad Playback (10s)</button>
+        </div>
+
+        <!-- Telemetry Log -->
+        <div class="card">
+            <h3>Fired VAST Telemetry Logs</h3>
+            <div id="telemetryLog" class="telemetry-log">
+                <div class="log-entry" style="color: #64748b;">Waiting for player initialization...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const playAdBtn = document.getElementById('playAdBtn');
+    const progressBar = document.getElementById('progressBar');
+    const playerStatus = document.getElementById('playerStatus');
+    const telemetryLog = document.getElementById('telemetryLog');
+    const campaignSelect = document.getElementById('campaignSelect');
+
+    let isPlaying = false;
+
+    function logTelemetry(eventType, campaignId, adFormat, extra = '') {
+        const timestamp = new Date().toISOString().split('T')[1].slice(0, 8);
+        const logEntry = document.createElement('div');
+        logEntry.className = 'log-entry';
+        
+        logEntry.innerHTML = `
+            <span style="color: #64748b;">[${timestamp}]</span> 
+            <span class="tag-event">${eventType}</span> 
+            | <span style="color: #e2e8f0;">${campaignId} (${adFormat})</span>
+            ${extra ? `<br><span style="color: #64748b; font-size: 0.75rem;">${extra}</span>` : ''}
+        `;
+
+        telemetryLog.prepend(logEntry);
+
+        // Simulates sending payload to back-end server via fetch
+        /*
+        fetch('/api/telemetry', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ campaign_id: campaignId, format: adFormat, event_type: eventType })
+        });
+        */
+    }
+
+    playAdBtn.addEventListener('click', () => {
+        if (isPlaying) return;
+        isPlaying = true;
+        playAdBtn.disabled = true;
+
+        const selectedOption = campaignSelect.options[campaignSelect.selectedIndex];
+        const campaignId = selectedOption.value;
+        const adFormat = selectedOption.getAttribute('data-format');
+
+        // Reset display
+        progressBar.style.width = '0%';
+        playerStatus.innerText = 'Playing simulated ad creative...';
+        playerStatus.style.color = '#38bdf8';
+
+        // Track fired quartiles to prevent multi-firing
+        const firedEvents = {
+            impression: false,
+            q1_25: false,
+            q2_50: false,
+            q3_75: false,
+            q4_100: false
+        };
+
+        // Fire initial impression event
+        firedEvents.impression = true;
+        logTelemetry('impression', campaignId, adFormat, 'GAM Tag Macro substituted: cb=' + Math.floor(Math.random() * 1000000));
+
+        let progress = 0;
+        const duration = 100; // 10 seconds total simulation (100 steps of 100ms)
+
+        const interval = setInterval(() => {
+            progress += 1;
+            const pct = progress;
+            progressBar.style.width = pct + '%';
+
+            // Simulate Quartile Fires at 25%, 50%, 75%, 100%
+            if (pct >= 25 && !firedEvents.q1_25) {
+                firedEvents.q1_25 = true;
+                logTelemetry('q1_25', campaignId, adFormat, '25% video duration reached');
+            }
+
+            // Simulate deliberate tag drop bug if CTV format is selected
+            if (pct >= 50 && !firedEvents.q2_50) {
+                if (adFormat === 'CTV' && Math.random() < 0.5) {
+                    logTelemetry('TAG_TIMEOUT_ERROR', campaignId, adFormat, '⚠️ CTV VAST beacon failed to return 200 OK');
+                    clearInterval(interval);
+                    playerStatus.innerText = 'Playback Error: Tag execution dropped!';
+                    playerStatus.style.color = '#ef4444';
+                    isPlaying = false;
+                    playAdBtn.disabled = false;
+                    return;
+                }
+                firedEvents.q2_50 = true;
+                logTelemetry('q2_50', campaignId, adFormat, '50% video duration reached');
+            }
+
+            if (pct >= 75 && !firedEvents.q3_75) {
+                firedEvents.q3_75 = true;
+                logTelemetry('q3_75', campaignId, adFormat, '75% video duration reached');
+            }
+
+            if (pct >= 100) {
+                clearInterval(interval);
+                if (!firedEvents.q4_100) {
+                    firedEvents.q4_100 = true;
+                    logTelemetry('q4_100', campaignId, adFormat, '100% complete view recorded');
+                }
+                playerStatus.innerText = 'Ad Playback Complete';
+                playerStatus.style.color = '#22c55e';
+                isPlaying = false;
+                playAdBtn.disabled = false;
+            }
+        }, 100);
+    });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,4 @@
+campaign_id,campaign_name,format,impression,q1_25,q4_100,conversion,total_spend,total_revenue,hook_rate_pct,vtr_pct,cpv,cpa,roas
+CMP_101,Summer Apparel,OLV,1690,690,150,30,14.18,2139.36,40.83,8.88,0.0946,0.47,150.83
+CMP_102,Tech Gadgets Launch,CTV,1732,673,70,31,14.32,2285.45,38.86,4.04,0.2046,0.46,159.58
+CMP_103,B2B SaaS Trial,Display,1634,683,133,28,13.48,1974.73,41.8,8.14,0.1014,0.48,146.45
