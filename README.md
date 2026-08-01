@@ -15,6 +15,10 @@ The system simulates high-volume ad serving events (impressions, quartile video 
 ---
 
 ## Architecture & Data Flow
+[ Synthetic Generator ] ➡️ [ Raw CSV Telemetry ] ➡️ [ Python Ingestion Pipeline ]
+⬇️
+[ Metabase Analytics ] ⬅️ [ Optimized SQL Queries ] ⬅️ [ PostgreSQL Database ]
+
 1. **Synthetic Telemetry Generation:** Custom Python scripts simulate thousands of impression and video tracking events (`impression`, `q1_25`, `q2_50`, `q3_75`, `q4_100`, `conversion`) across Display, OLV, and CTV channels.
 2. **Database Ingestion & ETL:** Python (`Pandas` + `SQLAlchemy`) deduplicates event IDs, truncates active tables for clean re-runs, and batches inserts into PostgreSQL.
 3. **Relational Database Storage:** Standardized database schema enforcing primary key constraints and indexing on `campaign_id`, `format`, and `event_type`.
@@ -63,13 +67,40 @@ pip install pandas sqlalchemy psycopg2-binary
 
 ### 2. Database Setup (Make sure that PostgreSQL is running on your system, then create the database schema)
 
+-- Executed in database/schema.sql
+CREATE TABLE raw_ad_telemetry (
+    event_id VARCHAR(50) PRIMARY KEY,
+    timestamp TIMESTAMP NOT NULL,
+    campaign_id VARCHAR(20) NOT NULL,
+    campaign_name VARCHAR(100),
+    format VARCHAR(20),
+    event_type VARCHAR(20),
+    cost NUMERIC(8, 4),
+    revenue NUMERIC(8, 2)
+);
+
+CREATE INDEX idx_campaign_format ON raw_ad_telemetry(campaign_id, format);
+CREATE INDEX idx_event_type ON raw_ad_telemetry(event_type);
+
 ### 3. Load Telemetry Data into PostgreSQL 
-### by using python database/load_data.py
+python database/load_data.py
 
 ### 4. 4. Launch Metabase Dashboard
-### Run Metabase via Docker:
-### docker run -d -p 3000:3000 --name metabase metabase/metabase
+docker run -d -p 3000:3000 --name metabase metabase/metabase
 
+1. Navigate to http://localhost:3000 in your browser.
+2. Connect Metabase to PostgreSQL using host host.docker.internal (Docker) or localhost.
+3. Open the SQL Query Editor and run the performance query:
+
+SELECT 
+    format,
+    COUNT(CASE WHEN event_type = 'impression' THEN 1 END) AS impressions,
+    COUNT(CASE WHEN event_type = 'q1_25' THEN 1 END) AS q1_25_plays,
+    COUNT(CASE WHEN event_type = 'q4_100' THEN 1 END) AS completions,
+    ROUND((COUNT(CASE WHEN event_type = 'q1_25' THEN 1 END)::decimal / NULLIF(COUNT(CASE WHEN event_type = 'impression' THEN 1 END), 0)) * 100, 2) AS hook_rate_pct,
+    ROUND((COUNT(CASE WHEN event_type = 'q4_100' THEN 1 END)::decimal / NULLIF(COUNT(CASE WHEN event_type = 'impression' THEN 1 END), 0)) * 100, 2) AS vtr_pct
+FROM raw_ad_telemetry
+GROUP BY format;
 
 ### Repository Structure 
 
