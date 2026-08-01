@@ -1,6 +1,6 @@
 # AdPulse: Real-Time VAST Telemetry & Campaign Performance Pipeline
 
-**AdPulse** is an end-to-end data engineering and analytics pipeline designed to ingest, process, and analyze raw Digital Video & Display VAST (Digital Video Ad Serving Template) telemetry data. 
+**AdPulse** is an end-to-end data engineering and analytics pipeline designed to ingest, process, and analyze raw Digital Video & Display VAST (Video Ad Serving Template) telemetry data.
 
 The system simulates high-volume ad serving events (impressions, quartile video plays, completions, and conversions), loads structured telemetry into a PostgreSQL database, and visualizes real-time performance anomalies via an interactive Metabase dashboard.
 
@@ -15,9 +15,12 @@ The system simulates high-volume ad serving events (impressions, quartile video 
 ---
 
 ## Architecture & Data Flow
-[ Synthetic Generator ] ➡️ [ Raw CSV Telemetry ] ➡️ [ Python Ingestion Pipeline ]
-⬇️
-[ Metabase Analytics ] ⬅️ [ Optimized SQL Queries ] ⬅️ [ PostgreSQL Database ]
+
+```
+[ Synthetic Generator ] → [ Raw CSV Telemetry ] → [ Python Ingestion Pipeline ]
+                                                              ↓
+[ Metabase Analytics ] ← [ Optimized SQL Queries ] ← [ PostgreSQL Database ]
+```
 
 1. **Synthetic Telemetry Generation:** Custom Python scripts simulate thousands of impression and video tracking events (`impression`, `q1_25`, `q2_50`, `q3_75`, `q4_100`, `conversion`) across Display, OLV, and CTV channels.
 2. **Database Ingestion & ETL:** Python (`Pandas` + `SQLAlchemy`) deduplicates event IDs, truncates active tables for clean re-runs, and batches inserts into PostgreSQL.
@@ -35,16 +38,21 @@ The system simulates high-volume ad serving events (impressions, quartile video 
 * **Containerization:** Docker Desktop
 * **Version Control:** Git & GitHub
 
-## Core Business Metrics Calculated 📊 
+---
+
+## Core Business Metrics Calculated 📊
 
 * **Hook Rate (%):** Measures immediate creative capture (25% quartile video plays divided by impressions).
+
   $$\text{Hook Rate} = \left( \frac{\text{q1\_25 Plays}}{\text{Impressions}} \right) \times 100$$
+
 * **Video Completion Rate (VTR %):** Measures total ad retention (100% video completions divided by impressions).
+
   $$\text{VTR} = \left( \frac{\text{q4\_100 Completions}}{\text{Impressions}} \right) \times 100$$
 
 ---
 
-## To Getting Started Locally
+## Getting Started Locally
 
 ### Prerequisites
 
@@ -55,8 +63,8 @@ The system simulates high-volume ad serving events (impressions, quartile video 
 ### 1. Clone the Repository & Setup Virtual Environment
 
 ```bash
-git clone [https://github.com/your-username/AdPulse.git](https://github.com/your-username/AdPulse.git)
-cd AdPulse 
+git clone https://github.com/your-username/AdPulse.git
+cd AdPulse
 
 # Create and activate virtual environment
 python3 -m venv .venv
@@ -64,10 +72,13 @@ source .venv/bin/activate
 
 # Install dependencies
 pip install pandas sqlalchemy psycopg2-binary
+```
 
-### 2. Database Setup (Make sure that PostgreSQL is running on your system, then create the database schema)
+### 2. Database Setup
 
--- Executed in database/schema.sql
+Make sure PostgreSQL is running on your system, then create the database schema (executed in `database/schema.sql`):
+
+```sql
 CREATE TABLE raw_ad_telemetry (
     event_id VARCHAR(50) PRIMARY KEY,
     timestamp TIMESTAMP NOT NULL,
@@ -81,17 +92,25 @@ CREATE TABLE raw_ad_telemetry (
 
 CREATE INDEX idx_campaign_format ON raw_ad_telemetry(campaign_id, format);
 CREATE INDEX idx_event_type ON raw_ad_telemetry(event_type);
+```
 
-### 3. Load Telemetry Data into PostgreSQL 
+### 3. Load Telemetry Data into PostgreSQL
+
+```bash
 python database/load_data.py
+```
 
-### 4. 4. Launch Metabase Dashboard
+### 4. Launch Metabase Dashboard
+
+```bash
 docker run -d -p 3000:3000 --name metabase metabase/metabase
+```
 
-1. Navigate to http://localhost:3000 in your browser.
-2. Connect Metabase to PostgreSQL using host host.docker.internal (Docker) or localhost.
+1. Navigate to [http://localhost:3000](http://localhost:3000) in your browser.
+2. Connect Metabase to PostgreSQL using host `host.docker.internal` (Docker) or `localhost`.
 3. Open the SQL Query Editor and run the performance query:
 
+```sql
 SELECT 
     format,
     COUNT(CASE WHEN event_type = 'impression' THEN 1 END) AS impressions,
@@ -101,23 +120,31 @@ SELECT
     ROUND((COUNT(CASE WHEN event_type = 'q4_100' THEN 1 END)::decimal / NULLIF(COUNT(CASE WHEN event_type = 'impression' THEN 1 END), 0)) * 100, 2) AS vtr_pct
 FROM raw_ad_telemetry
 GROUP BY format;
+```
 
-### Repository Structure 
+---
 
+## Repository Structure
+
+```
 ├── data/
 │   └── raw_vast_telemetry.csv   # Synthetic VAST event dataset
 ├── database/
-│   ├── schema.sql              # PostgreSQL table definitions & indexing
-│   └── load_data.py            # Ingestion, deduplication & ETL script
+│   ├── schema.sql               # PostgreSQL table definitions & indexing
+│   └── load_data.py             # Ingestion, deduplication & ETL script
 ├── docs/
-│   └── hook_rate_vs_vtr.png    # Dashboard visualization preview
+│   └── hook_rate_vs_vtr.png     # Dashboard visualization preview
 ├── pipeline/
-│   └── generator.py            # Synthetic telemetry event generation script
+│   └── generator.py             # Synthetic telemetry event generation script
 ├── .gitignore
 └── README.md
+```
+
+---
 
 ## License
-    Copyright [2026] [Christine Grimadeau]
+
+    Copyright 2026 Christine Grimadeau
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
